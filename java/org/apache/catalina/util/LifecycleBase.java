@@ -133,6 +133,8 @@ public abstract class LifecycleBase implements Lifecycle {
 
         try {
             setStateInternal(LifecycleState.INITIALIZING, null, false);
+            // 预留方法,继承的子类要实现这个方法
+            // 因此在它的子类 LifecycleMBeanBase 中没有 init() 方法,而是拥有 initInternal() 方法
             initInternal();
             setStateInternal(LifecycleState.INITIALIZED, null, false);
         } catch (Throwable t) {

@@ -60,6 +60,7 @@ public final class Bootstrap {
 
     private static final Pattern PATH_PATTERN = Pattern.compile("(\"[^\"]*\")|(([^,])*)");
 
+    /** 设置安装目录 catalinaHomeFile 及工作目录 catalinaBaseFile */
     static {
         // Will always be non-null
         String userDir = System.getProperty("user.dir");
@@ -68,6 +69,7 @@ public final class Bootstrap {
         String home = System.getProperty(Constants.CATALINA_HOME_PROP);
         File homeFile = null;
 
+        // 获取 Tomcat 安装目录
         if (home != null) {
             File f = new File(home);
             try {
@@ -102,12 +104,14 @@ public final class Bootstrap {
             }
         }
 
+        // 设置 catalinaHomeFile 环境变量 --- 安装目录
         catalinaHomeFile = homeFile;
         System.setProperty(
                 Constants.CATALINA_HOME_PROP, catalinaHomeFile.getPath());
 
         // Then base
         String base = System.getProperty(Constants.CATALINA_BASE_PROP);
+        // 设置 catalinaBaseFile 工作目录
         if (base == null) {
             catalinaBaseFile = catalinaHomeFile;
         } else {
@@ -131,8 +135,12 @@ public final class Bootstrap {
      */
     private Object catalinaDaemon = null;
 
+    // TomCat 自定义的三个类加载器,打破了 JVM 的双亲委派机制
+    // TomCat 公共类加载器
     ClassLoader commonLoader = null;
+    // 应用服务器类加载器
     ClassLoader catalinaLoader = null;
+    // web 应用程序类加载器
     ClassLoader sharedLoader = null;
 
 
@@ -141,11 +149,14 @@ public final class Bootstrap {
 
     private void initClassLoaders() {
         try {
+            // 两个参数表示该加载器名称以及父类加载器
+            // 这里的父类加载器为 null,表示只在当前类中找,不在查找其父类,打破双亲委派机制,不先从父类中找
             commonLoader = createClassLoader("common", null);
             if (commonLoader == null) {
                 // no config file, default to this loader - we might be in a 'single' env.
                 commonLoader = this.getClass().getClassLoader();
             }
+            // 两个参数表示该加载器名称以及父类加载器
             catalinaLoader = createClassLoader("server", commonLoader);
             sharedLoader = createClassLoader("shared", commonLoader);
         } catch (Throwable t) {
@@ -249,32 +260,38 @@ public final class Bootstrap {
      */
     public void init() throws Exception {
 
+        // 初始化类加载器
         initClassLoaders();
 
+        // 设置上下文加载器
         Thread.currentThread().setContextClassLoader(catalinaLoader);
 
+        // 设置安全机制加载器
         SecurityClassLoad.securityClassLoad(catalinaLoader);
 
         // Load our startup class and call its process() method
         if (log.isDebugEnabled()) {
             log.debug("Loading startup class");
         }
+        // 拿到类加载器后加载 Catalina 类
         Class<?> startupClass = catalinaLoader.loadClass("org.apache.catalina.startup.Catalina");
+        // 反射的方式实例化 Catalina
         Object startupInstance = startupClass.getConstructor().newInstance();
 
         // Set the shared extensions class loader
         if (log.isDebugEnabled()) {
             log.debug("Setting startup class properties");
         }
+        // 反射的方式获取父类加载器
         String methodName = "setParentClassLoader";
         Class<?> paramTypes[] = new Class[1];
         paramTypes[0] = Class.forName("java.lang.ClassLoader");
         Object paramValues[] = new Object[1];
         paramValues[0] = sharedLoader;
-        Method method =
-            startupInstance.getClass().getMethod(methodName, paramTypes);
+        Method method = startupInstance.getClass().getMethod(methodName, paramTypes);
         method.invoke(startupInstance, paramValues);
 
+        // 设置守护线程
         catalinaDaemon = startupInstance;
     }
 
@@ -297,8 +314,10 @@ public final class Bootstrap {
             param = new Object[1];
             param[0] = arguments;
         }
-        Method method =
-            catalinaDaemon.getClass().getMethod(methodName, paramTypes);
+        // catalinaDaemon 其实就是 Catalina 类,init() 设置的守护线程就是
+        // 反射的机制调用 Catalina 类的 load(String args[]) 方法
+        // org.apache.catalina.startup.Catalina.load(java.lang.String[])
+        Method method = catalinaDaemon.getClass().getMethod(methodName, paramTypes);
         if (log.isDebugEnabled()) {
             log.debug("Calling startup class " + method);
         }
@@ -440,14 +459,17 @@ public final class Bootstrap {
         synchronized (daemonLock) {
             if (daemon == null) {
                 // Don't set daemon until init() has completed
+                // 创建启动类
                 Bootstrap bootstrap = new Bootstrap();
                 try {
+                    // 初始化类加载器,调用 init() 方法
                     bootstrap.init();
                 } catch (Throwable t) {
                     handleThrowable(t);
                     t.printStackTrace();
                     return;
                 }
+                // 创建守护线程,守护线程不为空
                 daemon = bootstrap;
             } else {
                 // When running as a service the call to stop will be on a new

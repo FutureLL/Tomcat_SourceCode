@@ -535,11 +535,13 @@ public class StandardService extends LifecycleMBeanBase implements Service {
 
         super.initInternal();
 
+        // 初始化 engine 组件
         if (engine != null) {
             engine.init();
         }
 
         // Initialize any Executors
+        // 初始化线程池
         for (Executor executor : findExecutors()) {
             if (executor instanceof JmxEnabled) {
                 ((JmxEnabled) executor).setDomain(getDomain());
@@ -548,16 +550,17 @@ public class StandardService extends LifecycleMBeanBase implements Service {
         }
 
         // Initialize mapper listener
+        // 初始化 mapper 映射的监听器
         mapperListener.init();
 
         // Initialize our defined Connectors
+        // 初始化链接器
         synchronized (connectorsLock) {
             for (Connector connector : connectors) {
                 try {
                     connector.init();
                 } catch (Exception e) {
-                    String message = sm.getString(
-                            "standardService.connector.initFailed", connector);
+                    String message = sm.getString("standardService.connector.initFailed", connector);
                     log.error(message, e);
 
                     if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {

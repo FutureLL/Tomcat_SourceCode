@@ -530,6 +530,7 @@ public class Catalina {
      */
     public void load() {
 
+        // 如果已加载直接返回
         if (loaded) {
             return;
         }
@@ -537,14 +538,18 @@ public class Catalina {
 
         long t1 = System.nanoTime();
 
+        // 初始化目录,但是没用过
         initDirs();
 
         // Before digester - it may be needed
+        // 初始化命名空间
         initNaming();
 
         // Create and execute our Digester
+        // 解析 Server.xml 文件
         Digester digester = createStartDigester();
 
+        // 读取 Server.xml 文件
         InputSource inputSource = null;
         InputStream inputStream = null;
         File file = null;
@@ -573,15 +578,13 @@ public class Catalina {
                 }
             }
 
-            // This should be included in catalina.jar
+            // this should be included in catalina.jar
             // Alternative: don't bother with xml, just create it manually.
+            // 如果 Server.xml 文件不存在了,那么就去找 server-embed.xml
             if (inputStream == null) {
                 try {
-                    inputStream = getClass().getClassLoader()
-                            .getResourceAsStream("server-embed.xml");
-                    inputSource = new InputSource
-                    (getClass().getClassLoader()
-                            .getResource("server-embed.xml").toString());
+                    inputStream = getClass().getClassLoader().getResourceAsStream("server-embed.xml");
+                    inputSource = new InputSource(getClass().getClassLoader().getResource("server-embed.xml").toString());
                 } catch (Exception e) {
                     if (log.isDebugEnabled()) {
                         log.debug(sm.getString("catalina.configFail",
@@ -596,8 +599,7 @@ public class Catalina {
                     log.warn(sm.getString("catalina.configFail",
                             getConfigFile() + "] or [server-embed.xml]"));
                 } else {
-                    log.warn(sm.getString("catalina.configFail",
-                            file.getAbsolutePath()));
+                    log.warn(sm.getString("catalina.configFail", file.getAbsolutePath()));
                     if (file.exists() && !file.canRead()) {
                         log.warn("Permissions incorrect, read permission is not allowed on the file.");
                     }
@@ -627,15 +629,22 @@ public class Catalina {
             }
         }
 
+        // getServer(): 获取服务
+        // 给服务器设置相关信息
         getServer().setCatalina(this);
+        // 设置安装目录 catalinaHomeFile
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
+        // 设置 工作目录 catalinaBaseFile
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
         // Stream redirection
         initStreams();
 
         // Start the new server
+        // 启动服务
         try {
+            // 服务器初始化
+            // org.apache.catalina.util.LifecycleBase.init
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
