@@ -4983,6 +4983,7 @@ public class StandardContext extends ContainerBase
         }
 
         // Send j2ee.state.starting notification
+        // 将已经启动的状态广播出去,如果有监听器,监听到状态的变化,用来处理一些操作
         if (this.getObjectName() != null) {
             Notification notification = new Notification("j2ee.state.starting",
                     this.getObjectName(), sequenceNumber.getAndIncrement());
@@ -4994,14 +4995,30 @@ public class StandardContext extends ContainerBase
 
         // Currently this is effectively a NO-OP but needs to be called to
         // ensure the NamingResources follows the correct lifecycle
+        // 启动命名空间资源
         if (namingResources != null) {
             namingResources.start();
         }
 
         // Post work directory
+        // 发布工作目录
+        // 如果使用的安装版的,那么会在目录下自动生成一个 work 的文件
+        // 我的目录: /usr/local/tomcat/apache-tomcat-8.5.69/work
         postWorkDirectory();
 
         // Add missing components as necessary
+        // 加载资源,初始化了 WebResourceRoot
+        /**
+         *  四种资源:
+         * 1. pre 资源
+         *    Context.xml 文件中
+         *    <context>
+         *        <PreResource></PreResource>
+         *    </context>
+         * 2. main 资源: WEB-INF 下的 classes 以及 lib 资源
+         * 3. Jar 资源: <JarResource></JarResource> 定制化,增加 jar 包
+         * 4. Post 资源: <PostResource></PostResource>
+         */
         if (getResources() == null) {   // (1) Required by Loader
             if (log.isDebugEnabled()) {
                 log.debug("Configuring default Resources");
@@ -5014,25 +5031,32 @@ public class StandardContext extends ContainerBase
                 ok = false;
             }
         }
+
+        // 启动资源
         if (ok) {
             resourcesStart();
         }
 
+        // Web 加载器
         if (getLoader() == null) {
+            // 加载当前的 WebApp
             WebappLoader webappLoader = new WebappLoader();
             webappLoader.setDelegate(getDelegate());
             setLoader(webappLoader);
         }
 
         // An explicit cookie processor hasn't been specified; use the default
+        // 初始化 cookie
         if (cookieProcessor == null) {
             cookieProcessor = new Rfc6265CookieProcessor();
         }
 
         // Initialize character set mapper
+        // 初始化字符集映射
         getCharsetMapper();
 
         // Validate required extensions
+        // 依赖关系处理
         boolean dependencyCheck = true;
         try {
             dependencyCheck = ExtensionValidator.validateApplication
@@ -5048,12 +5072,14 @@ public class StandardContext extends ContainerBase
         }
 
         // Reading the "catalina.useNaming" environment variable
+        // 读取用户环境变量
         String useNamingProperty = System.getProperty("catalina.useNaming");
         if ((useNamingProperty != null)
             && (useNamingProperty.equals("false"))) {
             useNaming = false;
         }
 
+        // 设置用户环境变量
         if (ok && isUseNaming()) {
             if (getNamingContextListener() == null) {
                 NamingContextListener ncl = new NamingContextListener();
@@ -5065,6 +5091,7 @@ public class StandardContext extends ContainerBase
         }
 
         // Standard container startup
+        // 启动容器日志
         if (log.isDebugEnabled()) {
             log.debug("Processing standard container startup");
         }
@@ -5076,13 +5103,16 @@ public class StandardContext extends ContainerBase
         try {
             if (ok) {
                 // Start our subordinate components, if any
+                // 获取加载器
                 Loader loader = getLoader();
+                // 将 loader 作为生命周期,拿到则启动
                 if (loader instanceof Lifecycle) {
                     ((Lifecycle) loader).start();
                 }
 
                 // since the loader just started, the webapp classloader is now
                 // created.
+                // 对应累加载器的属性设置
                 if (loader.getClassLoader() instanceof WebappClassLoaderBase) {
                     WebappClassLoaderBase cl = (WebappClassLoaderBase) loader.getClassLoader();
                     cl.setClearReferencesRmiTargets(getClearReferencesRmiTargets());
@@ -5104,8 +5134,10 @@ public class StandardContext extends ContainerBase
                 getLogger();
 
                 Realm realm = getRealmInternal();
+                // 域的设置
                 if(null != realm) {
                     if (realm instanceof Lifecycle) {
+                        // 域启动
                         ((Lifecycle) realm).start();
                     }
 
@@ -5127,9 +5159,13 @@ public class StandardContext extends ContainerBase
                 }
 
                 // Notify our interested LifecycleListeners
+                // 发出一个事件,配置启动事件
+                // 将事件处理交给了 ContextConfig: 加载 web.xml 文件
+                // org.apache.catalina.startup.ContextConfig
                 fireLifecycleEvent(Lifecycle.CONFIGURE_START_EVENT, null);
 
                 // Start our child containers, if not already started
+                // 启动子节点 wrapper
                 for (Container child : findChildren()) {
                     if (!child.getState().isAvailable()) {
                         child.start();
@@ -5166,8 +5202,7 @@ public class StandardContext extends ContainerBase
                 // Configure default manager if none was specified
                 if (contextManager != null) {
                     if (log.isDebugEnabled()) {
-                        log.debug(sm.getString("standardContext.manager",
-                                contextManager.getClass().getName()));
+                        log.debug(sm.getString("standardContext.manager", contextManager.getClass().getName()));
                     }
                     setManager(contextManager);
                 }
@@ -5204,8 +5239,7 @@ public class StandardContext extends ContainerBase
                 InstanceManagerBindings.bind(getLoader().getClassLoader(), getInstanceManager());
 
                 // Create context attributes that will be required
-                getServletContext().setAttribute(
-                        JarScanner.class.getName(), getJarScanner());
+                getServletContext().setAttribute(JarScanner.class.getName(), getJarScanner());
 
                 // Make the version info available
                 getServletContext().setAttribute(Globals.WEBAPP_VERSION, getWebappVersion());
@@ -5215,11 +5249,9 @@ public class StandardContext extends ContainerBase
             mergeParameters();
 
             // Call ServletContainerInitializers
-            for (Map.Entry<ServletContainerInitializer, Set<Class<?>>> entry :
-                initializers.entrySet()) {
+            for (Map.Entry<ServletContainerInitializer, Set<Class<?>>> entry : initializers.entrySet()) {
                 try {
-                    entry.getKey().onStartup(entry.getValue(),
-                            getServletContext());
+                    entry.getKey().onStartup(entry.getValue(), getServletContext());
                 } catch (ServletException e) {
                     log.error(sm.getString("standardContext.sciFail"), e);
                     ok = false;
@@ -5289,9 +5321,7 @@ public class StandardContext extends ContainerBase
 
         // Send j2ee.state.running notification
         if (ok && (this.getObjectName() != null)) {
-            Notification notification =
-                new Notification("j2ee.state.running", this.getObjectName(),
-                                 sequenceNumber.getAndIncrement());
+            Notification notification = new Notification("j2ee.state.running", this.getObjectName(), sequenceNumber.getAndIncrement());
             broadcaster.sendNotification(notification);
         }
 
@@ -5306,8 +5336,7 @@ public class StandardContext extends ContainerBase
             setState(LifecycleState.FAILED);
             // Send j2ee.object.failed notification
             if (this.getObjectName() != null) {
-                Notification notification = new Notification("j2ee.object.failed",
-                        this.getObjectName(), sequenceNumber.getAndIncrement());
+                Notification notification = new Notification("j2ee.object.failed", this.getObjectName(), sequenceNumber.getAndIncrement());
                 broadcaster.sendNotification(notification);
             }
         } else {

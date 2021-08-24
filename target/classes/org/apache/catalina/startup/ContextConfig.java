@@ -1054,12 +1054,15 @@ public class ContextConfig implements LifecycleListener {
          *   those in JARs excluded from an absolute ordering) need to be
          *   scanned to check if they match.
          */
+        // 解析 web.xml 文件
+        // 生成解析 web.xml 的解析器
         WebXmlParser webXmlParser = new WebXmlParser(context.getXmlNamespaceAware(),
                 context.getXmlValidation(), context.getXmlBlockExternal());
 
         Set<WebXml> defaults = new HashSet<>();
         defaults.add(getDefaultWebXmlFragment(webXmlParser));
 
+        // 将解析结果放到 WebXml 对象
         WebXml webXml = createWebXml();
 
         // Parse context level web.xml
@@ -1080,8 +1083,7 @@ public class ContextConfig implements LifecycleListener {
 
         // Step 2. Order the fragments.
         Set<WebXml> orderedFragments = null;
-        orderedFragments =
-                WebXml.orderWebFragments(webXml, fragments, sContext);
+        orderedFragments = WebXml.orderWebFragments(webXml, fragments, sContext);
 
         // Step 3. Look for ServletContainerInitializer implementations
         if (ok) {
@@ -1143,15 +1145,11 @@ public class ContextConfig implements LifecycleListener {
         // Step 11. Apply the ServletContainerInitializer config to the
         // context
         if (ok) {
-            for (Map.Entry<ServletContainerInitializer,
-                    Set<Class<?>>> entry :
-                        initializerClassMap.entrySet()) {
+            for (Map.Entry<ServletContainerInitializer, Set<Class<?>>> entry : initializerClassMap.entrySet()) {
                 if (entry.getValue().isEmpty()) {
-                    context.addServletContainerInitializer(
-                            entry.getKey(), null);
+                    context.addServletContainerInitializer(entry.getKey(), null);
                 } else {
-                    context.addServletContainerInitializer(
-                            entry.getKey(), entry.getValue());
+                    context.addServletContainerInitializer(entry.getKey(), entry.getValue());
                 }
             }
         }
@@ -1164,8 +1162,7 @@ public class ContextConfig implements LifecycleListener {
         Map<String, JavaClassCacheEntry> javaClassCache = new HashMap<>();
 
         if (ok) {
-            WebResource[] webResources =
-                    context.getResources().listResources("/WEB-INF/classes");
+            WebResource[] webResources = context.getResources().listResources("/WEB-INF/classes");
 
             for (WebResource webResource : webResources) {
                 // Skip the META-INF directory from any JARs that have been
@@ -1173,8 +1170,8 @@ public class ContextConfig implements LifecycleListener {
                 if ("META-INF".equals(webResource.getName())) {
                     continue;
                 }
-                processAnnotationsWebResource(webResource, webXml,
-                        webXml.isMetadataComplete(), javaClassCache);
+                // 处理注解 web 资源
+                processAnnotationsWebResource(webResource, webXml, webXml.isMetadataComplete(), javaClassCache);
             }
         }
 
@@ -1183,8 +1180,8 @@ public class ContextConfig implements LifecycleListener {
         // are going to use (remember orderedFragments includes any
         // container fragments)
         if (ok) {
-            processAnnotations(
-                    orderedFragments, webXml.isMetadataComplete(), javaClassCache);
+            // 处理注解
+            processAnnotations( orderedFragments, webXml.isMetadataComplete(), javaClassCache);
         }
 
         // Cache, if used, is no longer required so clear it
@@ -1205,8 +1202,7 @@ public class ContextConfig implements LifecycleListener {
         for (Entry<String, String> entry : webxml.getContextParams().entrySet()) {
             context.addParameter(entry.getKey(), entry.getValue());
         }
-        context.setDenyUncoveredHttpMethods(
-                webxml.getDenyUncoveredHttpMethods());
+        context.setDenyUncoveredHttpMethods(webxml.getDenyUncoveredHttpMethods());
         context.setDisplayName(webxml.getDisplayName());
         context.setDistributable(webxml.isDistributable());
         for (ContextLocalEjb ejbLocalRef : webxml.getEjbLocalRefs().values()) {
@@ -1234,38 +1230,32 @@ public class ContextConfig implements LifecycleListener {
         for (String listener : webxml.getListeners()) {
             context.addApplicationListener(listener);
         }
-        for (Entry<String, String> entry :
-                webxml.getLocaleEncodingMappings().entrySet()) {
-            context.addLocaleEncodingMappingParameter(entry.getKey(),
-                    entry.getValue());
+        for (Entry<String, String> entry : webxml.getLocaleEncodingMappings().entrySet()) {
+            context.addLocaleEncodingMappingParameter(entry.getKey(), entry.getValue());
         }
         // Prevents IAE
         if (webxml.getLoginConfig() != null) {
             context.setLoginConfig(webxml.getLoginConfig());
         }
-        for (MessageDestinationRef mdr :
-                webxml.getMessageDestinationRefs().values()) {
+        for (MessageDestinationRef mdr : webxml.getMessageDestinationRefs().values()) {
             context.getNamingResources().addMessageDestinationRef(mdr);
         }
 
         // messageDestinations were ignored in Tomcat 6, so ignore here
 
         context.setIgnoreAnnotations(webxml.isMetadataComplete());
-        for (Entry<String, String> entry :
-                webxml.getMimeMappings().entrySet()) {
+        for (Entry<String, String> entry : webxml.getMimeMappings().entrySet()) {
             context.addMimeMapping(entry.getKey(), entry.getValue());
         }
         // Name is just used for ordering
-        for (ContextResourceEnvRef resource :
-                webxml.getResourceEnvRefs().values()) {
+        for (ContextResourceEnvRef resource : webxml.getResourceEnvRefs().values()) {
             context.getNamingResources().addResourceEnvRef(resource);
         }
         for (ContextResource resource : webxml.getResourceRefs().values()) {
             context.getNamingResources().addResource(resource);
         }
-        boolean allAuthenticatedUsersIsAppRole =
-                webxml.getSecurityRoles().contains(
-                        SecurityConstraint.ROLE_ALL_AUTHENTICATED_USERS);
+
+        boolean allAuthenticatedUsersIsAppRole = webxml.getSecurityRoles().contains(SecurityConstraint.ROLE_ALL_AUTHENTICATED_USERS);
         for (SecurityConstraint constraint : webxml.getSecurityConstraints()) {
             if (allAuthenticatedUsersIsAppRole) {
                 constraint.treatAllAuthenticatedUsersAsApplicationRole();
@@ -1300,8 +1290,7 @@ public class ContextConfig implements LifecycleListener {
             wrapper.setRunAs(servlet.getRunAs());
             Set<SecurityRoleRef> roleRefs = servlet.getSecurityRoleRefs();
             for (SecurityRoleRef roleRef : roleRefs) {
-                wrapper.addSecurityReference(
-                        roleRef.getName(), roleRef.getLink());
+                wrapper.addSecurityReference(roleRef.getName(), roleRef.getLink());
             }
             wrapper.setServletClass(servlet.getServletClass());
             MultipartDef multipartdef = servlet.getMultipartDef();
@@ -1327,24 +1316,21 @@ public class ContextConfig implements LifecycleListener {
                         fileSizeThreshold));
             }
             if (servlet.getAsyncSupported() != null) {
-                wrapper.setAsyncSupported(
-                        servlet.getAsyncSupported().booleanValue());
+                wrapper.setAsyncSupported(servlet.getAsyncSupported().booleanValue());
             }
             wrapper.setOverridable(servlet.isOverridable());
+            // 给 context 添加子节点 wrapper
             context.addChild(wrapper);
         }
-        for (Entry<String, String> entry :
-                webxml.getServletMappings().entrySet()) {
+        for (Entry<String, String> entry : webxml.getServletMappings().entrySet()) {
             context.addServletMappingDecoded(entry.getKey(), entry.getValue());
         }
         SessionConfig sessionConfig = webxml.getSessionConfig();
         if (sessionConfig != null) {
             if (sessionConfig.getSessionTimeout() != null) {
-                context.setSessionTimeout(
-                        sessionConfig.getSessionTimeout().intValue());
+                context.setSessionTimeout(sessionConfig.getSessionTimeout().intValue());
             }
-            SessionCookieConfig scc =
-                context.getServletContext().getSessionCookieConfig();
+            SessionCookieConfig scc = context.getServletContext().getSessionCookieConfig();
             scc.setName(sessionConfig.getCookieName());
             scc.setDomain(sessionConfig.getCookieDomain());
             scc.setPath(sessionConfig.getCookiePath());
@@ -1359,8 +1345,7 @@ public class ContextConfig implements LifecycleListener {
                 scc.setMaxAge(sessionConfig.getCookieMaxAge().intValue());
             }
             if (sessionConfig.getSessionTrackingModes().size() > 0) {
-                context.getServletContext().setSessionTrackingModes(
-                        sessionConfig.getSessionTrackingModes());
+                context.getServletContext().setSessionTrackingModes(sessionConfig.getSessionTrackingModes());
             }
         }
 
@@ -1380,8 +1365,7 @@ public class ContextConfig implements LifecycleListener {
         }
 
         // Do this last as it depends on servlets
-        for (JspPropertyGroup jspPropertyGroup :
-                webxml.getJspPropertyGroups()) {
+        for (JspPropertyGroup jspPropertyGroup : webxml.getJspPropertyGroups()) {
             String jspServletName = context.findServletMapping("*.jsp");
             if (jspServletName == null) {
                 jspServletName = "jsp";
@@ -1393,20 +1377,17 @@ public class ContextConfig implements LifecycleListener {
             } else {
                 if(log.isDebugEnabled()) {
                     for (String urlPattern : jspPropertyGroup.getUrlPatterns()) {
-                        log.debug("Skipping " + urlPattern + " , no servlet " +
-                                jspServletName);
+                        log.debug("Skipping " + urlPattern + " , no servlet " + jspServletName);
                     }
                 }
             }
         }
 
-        for (Entry<String, String> entry :
-                webxml.getPostConstructMethods().entrySet()) {
+        for (Entry<String, String> entry : webxml.getPostConstructMethods().entrySet()) {
             context.addPostConstructMethod(entry.getKey(), entry.getValue());
         }
 
-        for (Entry<String, String> entry :
-            webxml.getPreDestroyMethods().entrySet()) {
+        for (Entry<String, String> entry : webxml.getPreDestroyMethods().entrySet()) {
             context.addPreDestroyMethod(entry.getKey(), entry.getValue());
         }
     }
@@ -1869,8 +1850,8 @@ public class ContextConfig implements LifecycleListener {
         return callback.getFragments();
     }
 
-    protected void processAnnotations(Set<WebXml> fragments,
-            boolean handlesTypesOnly, Map<String,JavaClassCacheEntry> javaClassCache) {
+    protected void processAnnotations(Set<WebXml> fragments, boolean handlesTypesOnly, Map<String,JavaClassCacheEntry> javaClassCache) {
+
         for(WebXml fragment : fragments) {
             // Only need to scan for @HandlesTypes matches if any of the
             // following are true:
@@ -1878,13 +1859,14 @@ public class ContextConfig implements LifecycleListener {
             //   (e.g. main web.xml has metadata-complete="true"
             // - this fragment is for a container JAR (Servlet 3.1 section 8.1)
             // - this fragment has metadata-complete="true"
-            boolean htOnly = handlesTypesOnly || !fragment.getWebappJar() ||
-                    fragment.isMetadataComplete();
+            boolean htOnly = handlesTypesOnly || !fragment.getWebappJar() || fragment.isMetadataComplete();
 
             WebXml annotations = new WebXml();
             // no impact on distributable
             annotations.setDistributable(true);
             URL url = fragment.getURL();
+            // 最终执行: processAnnotationsStream() 方法
+            // org.apache.catalina.startup.ContextConfig.processAnnotationsStream
             processAnnotationsUrl(url, annotations, htOnly, javaClassCache);
             Set<WebXml> set = new HashSet<>();
             set.add(annotations);
@@ -2000,11 +1982,22 @@ public class ContextConfig implements LifecycleListener {
         }
     }
 
-
+    /**
+     * 类似于解析 xml 文件,获取其中的 wrapper,其中包含 servlet,filter,listener
+     *
+     * @param is
+     * @param fragment
+     * @param handlesTypesOnly
+     * @param javaClassCache
+     * @throws ClassFormatException
+     * @throws IOException
+     */
     protected void processAnnotationsStream(InputStream is, WebXml fragment,
             boolean handlesTypesOnly, Map<String,JavaClassCacheEntry> javaClassCache)
             throws ClassFormatException, IOException {
 
+        // Tomcat 自定义了一个类解析器
+        // 不会将 class 文件直接加载到内存,而是逐步的去解析,当需要用的时候才逐步加载到内存当中
         ClassParser parser = new ClassParser(is);
         JavaClass clazz = parser.parse();
         checkHandlesTypes(clazz, javaClassCache);

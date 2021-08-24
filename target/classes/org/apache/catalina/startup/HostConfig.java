@@ -469,8 +469,10 @@ public class HostConfig implements LifecycleListener {
         File configBase = host.getConfigBaseFile();
         String[] filteredAppPaths = filterAppPaths(appBase.list());
         // Deploy XML descriptors from configBase
+        // <host> ---> <context>: host 节点下找到 context 节点,从而拿到 web 应用,把 应用部署到 tomcat 服务器中
         deployDescriptors(configBase, configBase.list());
         // Deploy WARs
+        // 将对应的 war 包放到 webapps 文件中
         deployWARs(appBase, filteredAppPaths);
         // Deploy expanded folders
         deployDirectories(appBase, filteredAppPaths);
@@ -1084,6 +1086,7 @@ public class HostConfig implements LifecycleListener {
                         }
 
                         // DeployDirectory will call removeServiced
+                        // org.apache.catalina.startup.HostConfig.DeployDirectory
                         results.add(es.submit(new DeployDirectory(this, cn, dir)));
                     } catch (Throwable t) {
                         ExceptionUtils.handleThrowable(t);
@@ -1126,11 +1129,13 @@ public class HostConfig implements LifecycleListener {
         File xml = new File(dir, Constants.ApplicationContextXml);
         File xmlCopy = new File(host.getConfigBaseFile(), cn.getBaseName() + ".xml");
 
+        // 部署应用
         DeployedApplication deployedApp;
         boolean copyThisXml = isCopyXML();
         boolean deployThisXML = isDeployThisXML(dir, cn);
 
         try {
+            // 解析 context 节点
             if (deployThisXML && xml.exists()) {
                 synchronized (digesterLock) {
                     try {
@@ -1146,6 +1151,7 @@ public class HostConfig implements LifecycleListener {
                     }
                 }
 
+                // 解析 xml 文件
                 if (copyThisXml == false && context instanceof StandardContext) {
                     // Host is using default value. Context may override it.
                     copyThisXml = ((StandardContext) context).getCopyXML();
@@ -1174,6 +1180,7 @@ public class HostConfig implements LifecycleListener {
             context.setPath(cn.getPath());
             context.setWebappVersion(cn.getVersion());
             context.setDocBase(cn.getBaseName());
+            // 将解析的 context 结果,加到 host 的子节点中
             host.addChild(context);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -1606,7 +1613,9 @@ public class HostConfig implements LifecycleListener {
             host.setAutoDeploy(false);
         }
 
+        // 部署 WebAPP
         if (host.getDeployOnStartup()) {
+            // 把应用部署到 APP 上
             deployApps();
         }
     }
@@ -1907,6 +1916,9 @@ public class HostConfig implements LifecycleListener {
         }
     }
 
+    /**
+     * 部署
+     */
     private static class DeployDirectory implements Runnable {
 
         private HostConfig config;
@@ -1922,6 +1934,7 @@ public class HostConfig implements LifecycleListener {
         @Override
         public void run() {
             try {
+                // 部署 webapp
                 config.deployDirectory(cn, dir);
             } finally {
                 config.removeServiced(cn.getName());

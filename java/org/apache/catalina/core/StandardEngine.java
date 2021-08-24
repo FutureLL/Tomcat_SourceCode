@@ -260,6 +260,8 @@ public class StandardEngine extends ContainerBase implements Engine {
         }
 
         // Standard container startup
+        // 执行父类 startInternal() 方法
+        // org.apache.catalina.core.ContainerBase.startInternal
         super.startInternal();
     }
 

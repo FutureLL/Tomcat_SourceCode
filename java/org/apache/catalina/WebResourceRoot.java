@@ -93,6 +93,16 @@ public interface WebResourceRoot extends Lifecycle {
      *              of the web application. It must start with '/'.
      *
      * @return  The object that represents the resource at the given path
+     *
+     *  四种资源:
+     * 1. pre 资源
+     *    Context.xml 文件中
+     *    <context>
+     *        <PreResource></PreResource>
+     *    </context>
+     * 2. main 资源: WEB-INF 下的 classes 以及 lib 资源
+     * 3. Jar 资源: <JarResource></JarResource> 定制化,增加 jar 包
+     * 4. Post 资源: <PostResource></PostResource>
      */
     WebResource getResource(String path);
 

@@ -759,14 +759,18 @@ public final class StandardServer extends LifecycleMBeanBase implements Server {
     @Override
     protected void startInternal() throws LifecycleException {
 
+        // 发出一个事件,监听器就会监听到,之后会做一些相应的措施
         fireLifecycleEvent(CONFIGURE_START_EVENT, null);
+        // 设置状态
         setState(LifecycleState.STARTING);
 
+        // 命名空间资源启动
         globalNamingResources.start();
 
         // Start our defined Services
         synchronized (servicesLock) {
             for (Service service : services) {
+                // 打开 StandardService 的 startInternal() 方法
                 service.start();
             }
         }

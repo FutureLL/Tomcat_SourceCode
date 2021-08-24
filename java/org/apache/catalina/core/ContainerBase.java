@@ -921,24 +921,35 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         // Start our subordinate components, if any
         logger = null;
         getLogger();
+
+        // 如果有集群启动集群
         Cluster cluster = getClusterInternal();
         if (cluster instanceof Lifecycle) {
             ((Lifecycle) cluster).start();
         }
+
+        // 域
         Realm realm = getRealmInternal();
         if (realm instanceof Lifecycle) {
             ((Lifecycle) realm).start();
         }
 
         // Start our child containers, if any
+        // 把子容器的启动步骤放在线程中处理,默认情况下线程池只有一个线程处理任务队列
+        // StandardEngine 调用的时候,这里拿到的 children 有一个值: StandardHost[localhost]
+        // <Engine name="Catalina" defaultHost="localhost">
+        //      <Host name="localhost"  appBase="webapps" unpackWARs="true" autoDeploy="true" startStopThreads="1">
+        // </engine>
         Container children[] = findChildren();
         List<Future<Void>> results = new ArrayList<>();
         for (Container child : children) {
+            // StartChild 的 call方法,调用的是 child.start() 方法,最终会调用 StandardHost.startInternal
             results.add(startStopExecutor.submit(new StartChild(child)));
         }
 
         MultiThrowable multiThrowable = null;
 
+        // 阻塞当前线程,直到子容器 start 完成
         for (Future<Void> result : results) {
             try {
                 result.get();
@@ -957,13 +968,19 @@ public abstract class ContainerBase extends LifecycleMBeanBase
         }
 
         // Start the Valves in our pipeline (including the basic), if any
+        // 启用 Pipeline --> StandardPipeline#startInternal()
+        // org.apache.catalina.core.StandardPipeline.startInternal
         if (pipeline instanceof Lifecycle) {
             ((Lifecycle) pipeline).start();
         }
 
+        // 很重要:
+        // StandardHost 调用时,激发 STARTING 监听器 HostConfig,最终会调用 HostConfig#start() 方法 - 这一步很关键
         setState(LifecycleState.STARTING);
 
         // Start our thread
+        // 开启 ContainerBackgroundProcessor 线程用于调用子容器的 backgroundProcess 方法
+        // 默认情况下 backgroundProcessorDelay = -1,不会启用该线程
         threadStart();
     }
 
@@ -1426,6 +1443,8 @@ public abstract class ContainerBase extends LifecycleMBeanBase
 
         @Override
         public Void call() throws LifecycleException {
+            // StandardHost.startInternal()
+            // org.apache.catalina.core.StandardHost.startInternal
             child.start();
             return null;
         }

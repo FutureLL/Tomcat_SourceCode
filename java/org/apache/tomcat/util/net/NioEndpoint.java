@@ -215,6 +215,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
     @Override
     public void bind() throws Exception {
 
+        // 实例化 ServerSocketChannel
         if (!getUseInheritedChannel()) {
             serverSock = ServerSocketChannel.open();
             socketProperties.setProperties(serverSock.socket());
@@ -246,6 +247,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
         // Initialize SSL if needed
         initialiseSsl();
 
+        // 初始化 selector
         selectorPool.open();
     }
 

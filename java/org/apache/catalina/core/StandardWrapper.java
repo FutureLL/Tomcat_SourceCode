@@ -139,6 +139,11 @@ public class StandardWrapper extends ContainerBase
     /**
      * The load-on-startup order value (negative value means load on
      * first call) for this servlet.
+     * 此 servlet 的启动时加载顺序值（负值表示首次调用时加载）
+     * <servlet>
+     *     <load-on-startup>1</load-on-startup>
+     * </servlet>
+     * 值为 0 和 1 都是即时加载,但是 0 的优先级最高,数字越到,优先级越低
      */
     protected int loadOnStartup = -1;
 
@@ -989,10 +994,12 @@ public class StandardWrapper extends ContainerBase
     public synchronized void load() throws ServletException {
         instance = loadServlet();
 
+        // 如果没有进行初始化,那么进行初始化
         if (!instanceInitialized) {
             initServlet(instance);
         }
 
+        // 如果是 JSP 的 servlet,那么进行处理
         if (isJspServlet) {
             StringBuilder oname = new StringBuilder(getDomain());
 
@@ -1041,10 +1048,10 @@ public class StandardWrapper extends ContainerBase
             // Complain if no servlet class has been specified
             if (servletClass == null) {
                 unavailable(null);
-                throw new ServletException
-                    (sm.getString("standardWrapper.notClass", getName()));
+                throw new ServletException(sm.getString("standardWrapper.notClass", getName()));
             }
 
+            // 通用的管理器: 管理 servlet,filter,listener
             InstanceManager instanceManager = ((StandardContext)getParent()).getInstanceManager();
             try {
                 servlet = (Servlet) instanceManager.newInstance(servletClass);
@@ -1070,11 +1077,9 @@ public class StandardWrapper extends ContainerBase
             }
 
             if (multipartConfigElement == null) {
-                MultipartConfig annotation =
-                        servlet.getClass().getAnnotation(MultipartConfig.class);
+                MultipartConfig annotation = servlet.getClass().getAnnotation(MultipartConfig.class);
                 if (annotation != null) {
-                    multipartConfigElement =
-                            new MultipartConfigElement(annotation);
+                    multipartConfigElement = new MultipartConfigElement(annotation);
                 }
             }
 
@@ -1087,6 +1092,8 @@ public class StandardWrapper extends ContainerBase
 
             classLoadTime=(int) (System.currentTimeMillis() -t1);
 
+            // 为了解决线程安全问题,现在已废弃
+            // 有了同步框架之后,线程安全问题就解决了
             if (servlet instanceof SingleThreadModel) {
                 if (instancePool == null) {
                     instancePool = new Stack<>();
@@ -1094,6 +1101,7 @@ public class StandardWrapper extends ContainerBase
                 singleThreadModel = true;
             }
 
+            // 初始化 servlet
             initServlet(servlet);
 
             fireContainerEvent("load", this);

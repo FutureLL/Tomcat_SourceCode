@@ -632,7 +632,7 @@ public class Catalina {
         // getServer(): 获取服务
         // 给服务器设置相关信息
         getServer().setCatalina(this);
-        // 设置安装目录 catalinaHomeFile
+        // 设置 安装目录 catalinaHomeFile
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
         // 设置 工作目录 catalinaBaseFile
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
@@ -645,7 +645,7 @@ public class Catalina {
         try {
             // 服务器初始化
             // org.apache.catalina.util.LifecycleBase.init
-            getServer().init();
+             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
                 throw new java.lang.Error(e);
@@ -681,6 +681,7 @@ public class Catalina {
      */
     public void start() {
 
+        // Tomcat 服务为空,加载服务
         if (getServer() == null) {
             load();
         }
@@ -694,6 +695,7 @@ public class Catalina {
 
         // Start the new server
         try {
+            // 启动服务器
             getServer().start();
         } catch (LifecycleException e) {
             log.fatal(sm.getString("catalina.serverStartFail"), e);
@@ -711,6 +713,7 @@ public class Catalina {
         }
 
         // Register shutdown hook
+        // 钩子线程用于安全关闭
         if (useShutdownHook) {
             if (shutdownHook == null) {
                 shutdownHook = new CatalinaShutdownHook();
@@ -727,6 +730,7 @@ public class Catalina {
             }
         }
 
+        // 关闭服务
         if (await) {
             await();
             stop();
