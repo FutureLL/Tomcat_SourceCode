@@ -758,8 +758,10 @@ public class StandardWrapper extends ContainerBase
         boolean newInstance = false;
 
         // If not SingleThreadedModel, return the same instance every time
+        // 非单线程模式
         if (!singleThreadModel) {
             // Load and initialize our instance if necessary
+            // 只能实例化一次 --- 单例模式双重检测,保证线程的安全性
             if (instance == null || !instanceInitialized) {
                 synchronized (this) {
                     if (instance == null) {
@@ -796,7 +798,9 @@ public class StandardWrapper extends ContainerBase
                     // Have to do this outside of the sync above to prevent a
                     // possible deadlock
                     synchronized (instancePool) {
+                        // 实例池中增加实例
                         instancePool.push(instance);
+                        // 数量+1
                         nInstances++;
                     }
                 }
@@ -818,7 +822,9 @@ public class StandardWrapper extends ContainerBase
                 // Allocate a new instance if possible, or else wait
                 if (nInstances < maxInstances) {
                     try {
+                        // 实例池中增加实例
                         instancePool.push(loadServlet());
+                        // 数量+1
                         nInstances++;
                     } catch (ServletException e) {
                         throw e;
@@ -828,6 +834,7 @@ public class StandardWrapper extends ContainerBase
                     }
                 } else {
                     try {
+                        // 实例池满了之后 --- 等待
                         instancePool.wait();
                     } catch (InterruptedException e) {
                         // Ignore

@@ -509,11 +509,15 @@ public abstract class AbstractEndpoint<S> {
      * External Executor based thread pool.
      */
     private Executor executor = null;
+
     public void setExecutor(Executor executor) {
         this.executor = executor;
         this.internalExecutor = (executor == null);
     }
-    public Executor getExecutor() { return executor; }
+
+    public Executor getExecutor() {
+        return executor;
+    }
 
 
     /**
@@ -1092,18 +1096,22 @@ public abstract class AbstractEndpoint<S> {
      *
      * @return if processing was triggered successfully
      */
-    public boolean processSocket(SocketWrapperBase<S> socketWrapper,
-            SocketEvent event, boolean dispatch) {
+    public boolean processSocket(SocketWrapperBase<S> socketWrapper, SocketEvent event, boolean dispatch) {
         try {
             if (socketWrapper == null) {
                 return false;
             }
+            // 创建 Socket 处理器
             SocketProcessorBase<S> sc = processorCache.pop();
             if (sc == null) {
+                // 创建一个处理器
+                // 创建的处理器为: org.apache.catalina.connector.Connector.protocolHandlerClassName
+                // "org.apache.coyote.http11.Http11NioProtocol";
                 sc = createSocketProcessor(socketWrapper, event);
             } else {
                 sc.reset(socketWrapper, event);
             }
+            // 获取线程进行处理
             Executor executor = getExecutor();
             if (dispatch && executor != null) {
                 executor.execute(sc);

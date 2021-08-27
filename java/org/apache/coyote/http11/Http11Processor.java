@@ -185,15 +185,12 @@ public class Http11Processor extends AbstractProcessor {
         super(endpoint);
         this.protocol = protocol;
 
-        httpParser = new HttpParser(protocol.getRelaxedPathChars(),
-                protocol.getRelaxedQueryChars());
+        httpParser = new HttpParser(protocol.getRelaxedPathChars(), protocol.getRelaxedQueryChars());
 
-        inputBuffer = new Http11InputBuffer(request, protocol.getMaxHttpHeaderSize(),
-                protocol.getRejectIllegalHeader(), httpParser);
+        inputBuffer = new Http11InputBuffer(request, protocol.getMaxHttpHeaderSize(), protocol.getRejectIllegalHeader(), httpParser);
         request.setInputBuffer(inputBuffer);
 
-        outputBuffer = new Http11OutputBuffer(response, protocol.getMaxHttpHeaderSize(),
-                protocol.getSendReasonPhrase());
+        outputBuffer = new Http11OutputBuffer(response, protocol.getMaxHttpHeaderSize(), protocol.getSendReasonPhrase());
         response.setOutputBuffer(outputBuffer);
 
         // Create and add the identity filters.

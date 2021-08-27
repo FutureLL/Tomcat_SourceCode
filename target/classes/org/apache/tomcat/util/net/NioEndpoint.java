@@ -411,21 +411,29 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
             Socket sock = socket.socket();
             socketProperties.setProperties(sock);
 
+            // 将 SocketChannel 转换成 NioChannel
             NioChannel channel = nioChannels.pop();
             if (channel == null) {
                 SocketBufferHandler bufhandler = new SocketBufferHandler(
                         socketProperties.getAppReadBufSize(),
                         socketProperties.getAppWriteBufSize(),
                         socketProperties.getDirectBuffer());
+                // 安全套接字 SSL ---> HTTPS
                 if (isSSLEnabled()) {
                     channel = new SecureNioChannel(socket, bufhandler, selectorPool, this);
-                } else {
+                }
+                // HTTP1.1
+                else {
                     channel = new NioChannel(socket, bufhandler);
                 }
             } else {
                 channel.setIOChannel(socket);
                 channel.reset();
             }
+
+            System.out.println(channel);
+
+            // 拿到请求,将请求加入到队列当中
             getPoller0().register(channel);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -466,10 +474,14 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
             int errorDelay = 0;
 
             // Loop until we receive a shutdown command
+            // 监听器运行状态
             while (running) {
 
                 // Loop if endpoint is paused
+                // 如果监听器目前处于暂停状态,也就是 paused = true
+                // 监听器不再运行状态,也就是 running = true
                 while (paused && running) {
+                    // 设置状态为 PAUSED
                     state = AcceptorState.PAUSED;
                     try {
                         Thread.sleep(50);
@@ -485,13 +497,16 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
 
                 try {
                     //if we have reached max connections, wait
+                    // 最大数量限制
                     countUpOrAwaitConnection();
 
                     SocketChannel socket = null;
                     try {
                         // Accept the next incoming connection from the server
                         // socket
+                        // 接收请求 java.nio.channels.ServerSocketChannel.accept
                         socket = serverSock.accept();
+                        System.out.println(socket);
                     } catch (IOException ioe) {
                         // We didn't get a socket
                         countDownConnection();
@@ -606,8 +621,8 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
         public void run() {
             if (interestOps == OP_REGISTER) {
                 try {
-                    socket.getIOChannel().register(
-                            socket.getPoller().getSelector(), SelectionKey.OP_READ, socketWrapper);
+                    // 获取注册相关的信息
+                    socket.getIOChannel().register(socket.getPoller().getSelector(), SelectionKey.OP_READ, socketWrapper);
                 } catch (Exception x) {
                     log.error(sm.getString("endpoint.nio.registerFail"), x);
                 }
@@ -654,8 +669,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
     public class Poller implements Runnable {
 
         private Selector selector;
-        private final SynchronizedQueue<PollerEvent> events =
-                new SynchronizedQueue<>();
+        private final SynchronizedQueue<PollerEvent> events = new SynchronizedQueue<>();
 
         private volatile boolean close = false;
         private long nextExpiration = 0;//optimize expiration handling
@@ -756,6 +770,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
             ka.setReadTimeout(getConnectionTimeout());
             ka.setWriteTimeout(getConnectionTimeout());
             PollerEvent r = eventCache.pop();
+            // 生成 PollerEvent,并将 socket 加入到事件队列 EventQueue ---> SynchronizedQueue<PollerEvent> events
             ka.interestOps(SelectionKey.OP_READ);//this is what OP_REGISTER turns into.
             if ( r==null) {
                 r = new PollerEvent(socket,ka,OP_REGISTER);
@@ -853,6 +868,9 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                         wakeupCounter.set(0);
                     }
                     if (close) {
+                        // 该方法遍历了 EventQueue 中所有的 PollerEvent
+                        // 然后依次调用 PollerEvent 中的 run()
+                        // 将 socket 注册到 selector 中
                         events();
                         timeout(0, false);
                         try {
@@ -872,8 +890,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                     hasEvents = (hasEvents | events());
                 }
 
-                Iterator<SelectionKey> iterator =
-                    keyCount > 0 ? selector.selectedKeys().iterator() : null;
+                Iterator<SelectionKey> iterator = keyCount > 0 ? selector.selectedKeys().iterator() : null;
                 // Walk through the collection of ready keys and dispatch
                 // any active event.
                 while (iterator != null && iterator.hasNext()) {
@@ -883,6 +900,7 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                     // Attachment may be null if another thread has called
                     // cancelledKey()
                     if (socketWrapper != null) {
+                        // 循环处理 selector, 移除需要对 key 进行处理
                         processKey(sk, socketWrapper);
                     }
                 }
@@ -899,18 +917,25 @@ public class NioEndpoint extends AbstractJsseEndpoint<NioChannel> {
                 if (close) {
                     cancelledKey(sk);
                 } else if ( sk.isValid() && attachment != null ) {
+                    // 有读写事件准备就绪
                     if (sk.isReadable() || sk.isWritable() ) {
                         if ( attachment.getSendfileData() != null ) {
                             processSendfile(sk,attachment, false);
                         } else {
                             unreg(sk, attachment, sk.readyOps());
                             boolean closeSocket = false;
+
+                            // 注意: 不管是读操作还是写操作中,都是交给 processSocket() 方法进行处理
+                            // org.apache.tomcat.util.net.AbstractEndpoint.processSocket
+
                             // Read goes before write
+                            // 在写之前进行读操作
                             if (sk.isReadable()) {
                                 if (!processSocket(attachment, SocketEvent.OPEN_READ, true)) {
                                     closeSocket = true;
                                 }
                             }
+                            // 写事件
                             if (!closeSocket && sk.isWritable()) {
                                 if (!processSocket(attachment, SocketEvent.OPEN_WRITE, true)) {
                                     closeSocket = true;

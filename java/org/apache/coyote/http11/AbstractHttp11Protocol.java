@@ -1085,12 +1085,20 @@ public abstract class AbstractHttp11Protocol<S> extends AbstractProtocol<S> {
 
     @Override
     protected Processor createProcessor() {
+        // 构建 Http11Processor
         Http11Processor processor = new Http11Processor(this, getEndpoint());
+
+        // 设置一个适配器
         processor.setAdapter(getAdapter());
+        // 默认的 KeepAlive 情况下,每个 Socket 处理的最多的请求次数
         processor.setMaxKeepAliveRequests(getMaxKeepAliveRequests());
+        // 开启 KeepAlive 的 TimeOut
         processor.setConnectionUploadTimeout(getConnectionUploadTimeout());
+        // Http 遇到文件上传时间的默认超时时间(300 * 1000)
         processor.setDisableUploadTimeout(getDisableUploadTimeout());
+
         processor.setRestrictedUserAgents(getRestrictedUserAgents());
+        // 在 SSL 模式下缓冲的 POST 的最大大小(4 * 1000)
         processor.setMaxSavePostSize(getMaxSavePostSize());
         return processor;
     }

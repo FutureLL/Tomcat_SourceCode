@@ -425,6 +425,7 @@ public class StandardService extends LifecycleMBeanBase implements Service {
         // 启动引擎
         if (engine != null) {
             synchronized (engine) {
+                // host --->  context ---> wrapper
                 engine.start();
             }
         }

@@ -610,6 +610,8 @@ public class Catalina {
             try {
                 inputSource.setByteStream(inputStream);
                 digester.push(this);
+                // protected final ProtocolHandler protocolHandler; 给该对象赋值
+                // org.apache.catalina.connector.Connector.Connector(java.lang.String)
                 digester.parse(inputSource);
             } catch (SAXParseException spe) {
                 log.warn("Catalina.start using " + getConfigFile() + ": " +

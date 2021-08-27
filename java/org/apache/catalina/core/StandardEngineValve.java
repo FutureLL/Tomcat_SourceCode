@@ -75,6 +75,8 @@ final class StandardEngineValve extends ValveBase {
         }
 
         // Ask this Host to process this request
+        // 获取 host 中第一个阀门
+        // org.apache.catalina.core.StandardHostValve.invoke
         host.getPipeline().getFirst().invoke(request, response);
     }
 }

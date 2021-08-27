@@ -248,10 +248,13 @@ public class OutputBuffer extends Writer {
 
         // If there are chars, flush all of them to the byte buffer now as bytes are used to
         // calculate the content-length (if everything fits into the byte buffer, of course).
+        // 如果余留的数据 > 0
         if (cb.remaining() > 0) {
+            // 刷出数据到 ByteChunk,并进行字符转换
             flushCharBuffer();
         }
 
+        // coyote 的 Response
         if ((!coyoteResponse.isCommitted()) && (coyoteResponse.getContentLengthLong() == -1)
                 && !coyoteResponse.getRequest().method().equals("HEAD")) {
             // If this didn't cause a commit of the response, the final content
@@ -264,6 +267,7 @@ public class OutputBuffer extends Writer {
             }
         }
 
+        // ByteChunk 数据对象刷出到 outPutBuffer,逐层刷出
         if (coyoteResponse.getStatus() == HttpServletResponse.SC_SWITCHING_PROTOCOLS) {
             doFlush(true);
         } else {
@@ -274,6 +278,7 @@ public class OutputBuffer extends Writer {
         // The request should have been completely read by the time the response
         // is closed. Further reads of the input a) are pointless and b) really
         // confuse AJP (bug 50189) so close the input buffer to prevent them.
+        // 转换成 HttpServletResponse
         Request req = (Request) coyoteResponse.getRequest().getNote(CoyoteAdapter.ADAPTER_NOTES);
         req.inputBuffer.close();
 
@@ -308,12 +313,15 @@ public class OutputBuffer extends Writer {
             doFlush = true;
             if (initial) {
                 coyoteResponse.sendHeaders();
+                // 将数据刷出到 SocketBuffer
                 initial = false;
             }
             if (cb.remaining() > 0) {
+                // 刷出 Http 的数据到 SocketBuffer
                 flushCharBuffer();
             }
             if (bb.remaining() > 0) {
+                // 刷出 Http 的数据到 SocketBuffer
                 flushByteBuffer();
             }
         } finally {

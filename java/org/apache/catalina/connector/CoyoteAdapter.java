@@ -318,20 +318,22 @@ public class CoyoteAdapter implements Adapter {
 
 
     @Override
-    public void service(org.apache.coyote.Request req, org.apache.coyote.Response res)
-            throws Exception {
+    public void service(org.apache.coyote.Request req, org.apache.coyote.Response res) throws Exception {
 
-        Request request = (Request) req.getNote(ADAPTER_NOTES);
+        // 转换 Request 和 Response
+        Request  request = (Request) req.getNote(ADAPTER_NOTES);
         Response response = (Response) res.getNote(ADAPTER_NOTES);
 
         if (request == null) {
             // Create objects
+            // 通过 Connector 创建 Request 和 Response
             request = connector.createRequest();
             request.setCoyoteRequest(req);
             response = connector.createResponse();
             response.setCoyoteResponse(res);
 
-            // Link objects
+            // Link objects 链接对象
+            // 一一对应
             request.setResponse(response);
             response.setRequest(request);
 
@@ -340,6 +342,9 @@ public class CoyoteAdapter implements Adapter {
             res.setNote(ADAPTER_NOTES, response);
 
             // Set query string encoding
+            // URI的编码: http://127.0.0.1:8080/webDemo/
+            // URL     : /webDemo
+            // 获取对应编码
             req.getParameters().setQueryStringCharset(connector.getURICharset());
         }
 
@@ -355,14 +360,19 @@ public class CoyoteAdapter implements Adapter {
         try {
             // Parse and set Catalina and configuration specific
             // request parameters
+            // postParseRequest(): 在 Map 中解析请求
             postParseSuccess = postParseRequest(req, request, res, response);
             if (postParseSuccess) {
-                //check valves if we support async
-                request.setAsyncSupported(
-                        connector.getService().getContainer().getPipeline().isAsyncSupported());
+                // check valves if we support async
+                // 设置异步支持
+                // getService(): 获取 service
+                // getContainer(): 获取 engine
+                // getPipeline(): 获取通道
+                request.setAsyncSupported(connector.getService().getContainer().getPipeline().isAsyncSupported());
                 // Calling the container
-                connector.getService().getContainer().getPipeline().getFirst().invoke(
-                        request, response);
+                // 获取 engine 中第一个阀门
+                // org.apache.catalina.core.StandardEngineValve.invoke
+                connector.getService().getContainer().getPipeline().getFirst().invoke(request, response);
             }
             if (request.isAsync()) {
                 async = true;
@@ -391,7 +401,9 @@ public class CoyoteAdapter implements Adapter {
                     request.getAsyncContextInternal().setErrorState(throwable, true);
                 }
             } else {
+                // 请求完成
                 request.finishRequest();
+                // 响应完成
                 response.finishResponse();
             }
 
@@ -430,8 +442,7 @@ public class CoyoteAdapter implements Adapter {
                     if (host != null) {
                         host.logAccess(request, response, time, false);
                     } else {
-                        connector.getService().getContainer().logAccess(
-                                request, response, time, false);
+                        connector.getService().getContainer().logAccess(request, response, time, false);
                     }
                 }
             }

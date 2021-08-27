@@ -117,6 +117,7 @@ final class StandardHostValve extends ValveBase {
             return;
         }
 
+        // 如果支持异步则设置异步
         if (request.isAsyncSupported()) {
             request.setAsyncSupported(context.getPipeline().isAsyncSupported());
         }
@@ -140,6 +141,8 @@ final class StandardHostValve extends ValveBase {
             // application for processing.
             try {
                 if (!response.isErrorReportRequired()) {
+                    // 获取 context 中第一个阀门
+                    // org.apache.catalina.core.StandardContextValve.invoke
                     context.getPipeline().getFirst().invoke(request, response);
                 }
             } catch (Throwable t) {
